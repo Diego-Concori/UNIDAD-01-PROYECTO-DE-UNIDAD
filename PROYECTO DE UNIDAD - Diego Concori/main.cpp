@@ -108,3 +108,127 @@ void elipse(int xc,int yc,int rx,int ry,int r,int g,int b){
         else {y--;x++;dx+=2*ry*ry;dy-=2*rx*rx;d2+=dx-dy+(rx*rx);}
     }
 }
+// =========================
+// DIBUJO DE CUADRÍCULA Y EJES
+// =========================
+void drawGrid(){
+    if(!showGrid) return;
+    glColor3f(0.9,0.9,0.9); // gris claro
+    glBegin(GL_LINES);
+    for(int i=-winWidth;i<=winWidth;i+=gridSpacing){
+        glVertex2i(i,-winHeight); glVertex2i(i,winHeight);
+    }
+    for(int j=-winHeight;j<=winHeight;j+=gridSpacing){
+        glVertex2i(-winWidth,j); glVertex2i(winWidth,j);
+    }
+    glEnd();
+}
+
+void drawAxes(){
+    if(!showAxes) return;
+    glColor3f(0,0,0); // negro
+    glBegin(GL_LINES);
+    glVertex2i(-winWidth,0); glVertex2i(winWidth,0);   // eje X
+    glVertex2i(0,-winHeight); glVertex2i(0,winHeight); // eje Y
+    glEnd();
+}
+
+// =========================
+// CALLBACKS DE OPENGL
+// =========================
+void display(){
+    glClear(GL_COLOR_BUFFER_BIT);
+    drawGrid();
+    drawAxes();
+
+    // recorrer y dibujar todas las figuras almacenadas
+    for(auto &f:figuras){
+        if(f.tipo==1) lineaDirecta(f.x1,f.y1,f.x2,f.y2,f.r,f.g,f.b);
+        if(f.tipo==2) lineaDDA(f.x1,f.y1,f.x2,f.y2,f.r,f.g,f.b);
+        if(f.tipo==3){
+            int radio=sqrt(pow(f.x2-f.x1,2)+pow(f.y2-f.y1,2));
+            circulo(f.x1,f.y1,radio,f.r,f.g,f.b);
+        }
+        if(f.tipo==4){
+            int rx=abs(f.x2-f.x1), ry=abs(f.y2-f.y1);
+            elipse(f.x1,f.y1,rx,ry,f.r,f.g,f.b);
+        }
+    }
+    glFlush();
+}
+
+// Manejo del mouse
+void mouse(int button,int state,int x,int y){
+    if(button==GLUT_LEFT_BUTTON && state==GLUT_DOWN){
+        int mx=x-(winWidth/2);
+        int my=(winHeight/2)-y;
+
+        if(clickCount==0){ x1_=mx; y1_=my; clickCount=1; }
+        else { x2_=mx; y2_=my; clickCount=0;
+            Figura f={currentFigure,x1_,y1_,x2_,y2_,colorR,colorG,colorB};
+            figuras.push_back(f);
+        }
+        glutPostRedisplay();
+    }
+}
+
+// Teclado
+void keyboard(unsigned char key,int x,int y){
+    switch(key){
+        case 'g': case 'G': showGrid=!showGrid; break;
+        case 'e': case 'E': showAxes=!showAxes; break;
+        case 'c': case 'C': figuras.clear(); break;
+    }
+    glutPostRedisplay();
+}
+
+// =========================
+// MENÚ EMERGENTE
+// =========================
+void menuFig(int opt){ currentFigure=opt; }
+void menuColor(int opt){
+    if(opt==1){colorR=0;colorG=0;colorB=0;}
+    if(opt==2){colorR=255;colorG=0;colorB=0;}
+    if(opt==3){colorR=0;colorG=255;colorB=0;}
+    if(opt==4){colorR=0;colorG=0;colorB=255;}
+}
+void createMenu(){
+    int subFig=glutCreateMenu(menuFig);
+    glutAddMenuEntry("Recta (Directo)",1);
+    glutAddMenuEntry("Recta (DDA)",2);
+    glutAddMenuEntry("Circulo",3);
+    glutAddMenuEntry("Elipse",4);
+
+    int subCol=glutCreateMenu(menuColor);
+    glutAddMenuEntry("Negro",1);
+    glutAddMenuEntry("Rojo",2);
+    glutAddMenuEntry("Verde",3);
+    glutAddMenuEntry("Azul",4);
+
+    glutCreateMenu(menuFig);
+    glutAddSubMenu("Dibujo",subFig);
+    glutAddSubMenu("Color",subCol);
+    glutAttachMenu(GLUT_RIGHT_BUTTON);
+}
+
+// =========================
+// MAIN
+// =========================
+void init(){
+    glClearColor(1,1,1,1);
+    gluOrtho2D(-winWidth/2,winWidth/2,-winHeight/2,winHeight/2);
+}
+
+int main(int argc,char**argv){
+    glutInit(&argc,argv);
+    glutInitDisplayMode(GLUT_SINGLE|GLUT_RGB);
+    glutInitWindowSize(winWidth,winHeight);
+    glutCreateWindow("Mini CAD 2D");
+    init();
+    glutDisplayFunc(display);
+    glutMouseFunc(mouse);
+    glutKeyboardFunc(keyboard);
+    createMenu();
+    glutMainLoop();
+    return 0;
+}
